@@ -1,0 +1,61 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+V.Local.sError.Declare(String)
+V.Local.sQuery.Declare(String)
+V.Local.iC.Declare(Long)
+V.Local.sPart.Declare(String)
+V.Local.sLoc.Declare(String)
+
+F.Intrinsic.Control.SetErrorHandler("Error_Err")
+F.Intrinsic.Control.ClearErrors
+
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+F.Intrinsic.ui.InvokeWaitDialog("Processing Inventory Price","Processing Inventory Price From History")
+F.ODBC.Connection!con.OpenRecordsetRO("rst","select DISTINCT PART, LOCATION, AMT_PRICE from INVENTORY_MSTR")
+F.Intrinsic.Control.DoUntil(V.ODBC.con!rst.EOF,=,True)
+	F.Intrinsic.UI.ChangeWaitStatus(V.ODBC.con!rst.FieldVal!Part,V.Local.ic)
+	V.Local.sPart.Set(V.ODBC.con!rst.FieldVal!PART)
+	V.Local.sLoc.Set(V.ODBC.con!rst.FieldVal!Location)
+	F.Intrinsic.String.Concat("select TOP 1 PART, LOCATION, PRICE from ORDER_HIST_LINE WHERE PART = '",V.Local.sPart.psqlfriendly,"' AND LOCATION = '",,"' order by Date_invoice DESC",V.local.sQuery)
+	F.ODBC.Connection!con.OpenRecordsetRO("rstHist",V.Local.sQuery)
+	F.Intrinsic.Control.If(V.ODBc.con!rstHist.EOF,=,False)
+		F.Intrinsic.String.Concat("SELECT AMT_PRICE FROM INVENTORY_MSTR WHERE PART ='",V.Local.sPart.psqlfriendly,"' AND LOCATION ='",V.Local.sLoc.psqlfriendly,"'",V.Local.sQuery)
+		F.ODBC.Connection!con.OpenRecordsetRW("rstPrice",V.Local.sQuery)
+		F.Intrinsic.Control.If(V.ODBC.con!rstPrice.EOF,=,False)
+			F.Intrinsic.Debug.stop
+			F.ODBC.con!rstPrice.Set!AMT_PRICE(V.ODBC.con!rstHist.FieldVal!Price)
+			F.ODBC.con!rstPrice.Update
+		F.Intrinsic.Control.endif
+		F.ODBC.con!rstPrice.close
+	F.Intrinsic.Control.endif
+	F.ODBC.con!rstHIST.Close
+	F.Intrinsic.Math.Add(V.Local.iC,1,V.Local.iC)
+	F.Intrinsic.Control.If(V.Local.iC,>=,100)
+		V.Local.iC.Set(1)
+	F.Intrinsic.Control.endif
+	F.ODBC.con!rst.MoveNext
+F.Intrinsic.Control.Loop
+F.Intrinsic.UI.Msgbox("Process Complete")
+F.ODBC.con!rst.Close
+F.ODBC.Connection!con.Close
+F.Intrinsic.UI.CloseWaitDialog
+F.Intrinsic.Control.end
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Error_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+
